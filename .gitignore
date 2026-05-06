@@ -1,0 +1,9 @@
+#Dépendance Node.js
+node_modules/
+
+#Fichiers de base de données locaux
+market.db
+market.db-journal
+
+#Fichiers d'environnement
+.env
