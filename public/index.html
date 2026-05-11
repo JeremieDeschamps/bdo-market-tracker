@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BDO Market Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="background-orb orb-left"></div>
+    <div class="background-orb orb-right"></div>
+
+    <main class="app-shell">
+        <header class="hero">
+            <p class="eyebrow">Black Desert Online</p>
+            <h1>Market Categories Dashboard</h1>
+            <p class="subtitle">Browse the latest category snapshots and inspect item prices in a clean, sortable view.</p>
+            <div class="top-nav">
+                <a href="/trends.html" class="nav-link">Open Price Trends</a>
+            </div>
+        </header>
+
+        <section class="overview" id="overviewCards">
+            <article class="card stat">
+                <h2>Latest Snapshot</h2>
+                <p id="latestDate">-</p>
+            </article>
+            <article class="card stat">
+                <h2>Total Categories</h2>
+                <p id="totalCategories">-</p>
+            </article>
+            <article class="card stat">
+                <h2>Total Items</h2>
+                <p id="totalItems">-</p>
+            </article>
+        </section>
+
+        <section class="global-search-bar">
+            <input id="globalItemSearch" type="search" placeholder="Search item name across all categories" aria-label="Search item name across all categories">
+        </section>
+
+        <section class="layout">
+            <aside class="panel categories-panel">
+                <div class="panel-title-row">
+                    <h3>Categories</h3>
+                </div>
+                <div id="categoriesList" class="categories-list"></div>
+            </aside>
+
+            <section class="panel items-panel">
+                <div class="panel-title-row">
+                    <h3 id="itemsTitle">Select a category</h3>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Item ID</th>
+                                <th data-sort="name">Name</th>
+                                <th data-sort="price">Price</th>
+                                <th>Min</th>
+                                <th>Max</th>
+                                <th data-sort="stock">Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsBody"></tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
