@@ -1,27 +1,93 @@
 import express from 'express';
+import { readdir, stat } from 'node:fs/promises';
+import path from 'node:path';
 import { ItemRepository } from './ItemRepository.js';
 import { parseWindowToHours } from './timeWindow.js';
 
 const app = express();
 const repo = new ItemRepository();
 const port = process.env.PORT || 3000;
+const PROJECT_ROOT = process.cwd();
+const DB_PATH = path.join(PROJECT_ROOT, 'market.db');
+const STORAGE_CACHE_TTL_MS = 5 * 60 * 1000;
+let storageCache = {
+    measuredAt: 0,
+    projectSizeBytes: null,
+    dbSizeBytes: null
+};
 
 app.disable('x-powered-by');
+
+async function getDirectorySizeBytes(dirPath) {
+    let total = 0;
+    const entries = await readdir(dirPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+        const entryPath = path.join(dirPath, entry.name);
+
+        if (entry.isSymbolicLink()) {
+            continue;
+        }
+
+        if (entry.isDirectory()) {
+            total += await getDirectorySizeBytes(entryPath);
+            continue;
+        }
+
+        const entryStat = await stat(entryPath);
+        total += entryStat.size;
+    }
+
+    return total;
+}
+
+async function getStorageStatsCached() {
+    const now = Date.now();
+    if ((now - storageCache.measuredAt) < STORAGE_CACHE_TTL_MS && storageCache.projectSizeBytes !== null) {
+        return storageCache;
+    }
+
+    const [projectSizeBytes, dbStat] = await Promise.all([
+        getDirectorySizeBytes(PROJECT_ROOT),
+        stat(DB_PATH).catch(() => null)
+    ]);
+
+    storageCache = {
+        measuredAt: now,
+        projectSizeBytes,
+        dbSizeBytes: dbStat ? dbStat.size : null
+    };
+
+    return storageCache;
+}
 
 app.use(express.json());
 app.use(express.static('public'));
 
-app.get('/api/overview', (_req, res) => {
+app.get('/api/overview', async (_req, res) => {
     const latestDate = repo.getLatestRecordDate();
     const categories = repo.getCategoriesForLatestDate();
 
     const totalItems = categories.reduce((acc, category) => acc + category.itemCount, 0);
     const totalCategories = categories.length;
 
+    let projectSizeBytes = null;
+    let dbSizeBytes = null;
+
+    try {
+        const storageStats = await getStorageStatsCached();
+        projectSizeBytes = storageStats.projectSizeBytes;
+        dbSizeBytes = storageStats.dbSizeBytes;
+    } catch (error) {
+        console.error('Storage stats error:', error.message);
+    }
+
     res.json({
         latestDate,
         totalItems,
-        totalCategories
+        totalCategories,
+        projectSizeBytes,
+        dbSizeBytes
     });
 });
 
@@ -86,5 +152,7 @@ app.post('/api/main-categories/:main/label', (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(`UI server running on http://localhost:${port}`);
+    console.log('UI server running');
+    console.log(`http://localhost:${port}`);
+    console.log(`http://localhost:${port}/trends.html`);
 });

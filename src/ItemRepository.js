@@ -235,19 +235,19 @@ export class ItemRepository {
 
         return this.db.prepare(`
             SELECT
-                item_id AS itemId,
-                name,
-                price,
-                COALESCE(daily_prices.min_price, item_corridors.min_price) AS minPrice,
-                COALESCE(daily_prices.max_price, item_corridors.max_price) AS maxPrice,
-                stock,
-                record_date AS recordDate
-            FROM daily_prices
-            LEFT JOIN item_corridors ON item_corridors.item_id = daily_prices.item_id
-            WHERE record_date = ?
-              AND main_category = ?
-              AND sub_category = ?
-            ORDER BY price DESC
+                                daily_prices.item_id AS itemId,
+                                daily_prices.name AS name,
+                                daily_prices.price AS price,
+                                COALESCE(item_corridors.min_price, NULLIF(daily_prices.min_price, 0)) AS minPrice,
+                                COALESCE(item_corridors.max_price, NULLIF(daily_prices.max_price, 0)) AS maxPrice,
+                                daily_prices.stock AS stock,
+                                daily_prices.record_date AS recordDate
+                        FROM daily_prices
+                        LEFT JOIN item_corridors ON item_corridors.item_id = daily_prices.item_id
+                        WHERE daily_prices.record_date = ?
+                            AND daily_prices.main_category = ?
+                            AND daily_prices.sub_category = ?
+                        ORDER BY daily_prices.price DESC
             LIMIT ?
         `).all(latestDateRow.latestDate, mainCategory, subCategory, limit);
     }
@@ -262,20 +262,20 @@ export class ItemRepository {
 
         return this.db.prepare(`
             SELECT
-                                daily_prices.item_id AS itemId,
-                                daily_prices.main_category AS mainCategory,
-                                daily_prices.sub_category AS subCategory,
-                                daily_prices.name AS name,
-                                daily_prices.price AS price,
-                                COALESCE(daily_prices.min_price, item_corridors.min_price) AS minPrice,
-                                COALESCE(daily_prices.max_price, item_corridors.max_price) AS maxPrice,
-                                daily_prices.stock AS stock,
-                                daily_prices.record_date AS recordDate
-                        FROM daily_prices
-                        LEFT JOIN item_corridors ON item_corridors.item_id = daily_prices.item_id
-                        WHERE daily_prices.record_date = ?
-                            AND LOWER(daily_prices.name) LIKE LOWER(?)
-            ORDER BY price DESC
+                daily_prices.item_id AS itemId,
+                daily_prices.main_category AS mainCategory,
+                daily_prices.sub_category AS subCategory,
+                daily_prices.name AS name,
+                daily_prices.price AS price,
+                COALESCE(item_corridors.min_price, NULLIF(daily_prices.min_price, 0)) AS minPrice,
+                COALESCE(item_corridors.max_price, NULLIF(daily_prices.max_price, 0)) AS maxPrice,
+                daily_prices.stock AS stock,
+                daily_prices.record_date AS recordDate
+            FROM daily_prices
+            LEFT JOIN item_corridors ON item_corridors.item_id = daily_prices.item_id
+            WHERE daily_prices.record_date = ?
+              AND LOWER(daily_prices.name) LIKE LOWER(?)
+            ORDER BY daily_prices.price DESC
             LIMIT ?
         `).all(latestDateRow.latestDate, normalized, limit);
     }

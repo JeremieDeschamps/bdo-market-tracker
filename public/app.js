@@ -1,22 +1,29 @@
 const overviewNodes = {
 	latestDate: document.getElementById('latestDate'),
 	totalCategories: document.getElementById('totalCategories'),
-	totalItems: document.getElementById('totalItems')
+	totalItems: document.getElementById('totalItems'),
+	projectSize: document.getElementById('projectSize'),
+	dbSize: document.getElementById('dbSize')
 };
 
 const categoriesList = document.getElementById('categoriesList');
 const globalItemSearch = document.getElementById('globalItemSearch');
+const refreshStatus = document.getElementById('refreshStatus');
 const itemsBody = document.getElementById('itemsBody');
 const itemsTitle = document.getElementById('itemsTitle');
 const sortableHeaders = document.querySelectorAll('th[data-sort]');
 
+const POLL_INTERVAL_MS = 60000;
+
 let allCategories = [];
 let selectedCategoryKey = '';
 let currentItems = [];
+let selectedCategory = null;
 const expandedGroups = new Set();
 let searchDebounceId = null;
 let activeSearchController = null;
 let activeSearchToken = 0;
+let dashboardPollId = null;
 const sortState = {
 	field: null,
 	direction: 'asc'
@@ -44,6 +51,28 @@ const SUB_CATEGORY_LABELS = {
 
 function formatNumber(value) {
 	return Number(value || 0).toLocaleString('en-US');
+}
+
+function formatBytes(value) {
+	if (value === null || value === undefined || Number.isNaN(Number(value))) {
+		return '-';
+	}
+
+	const bytes = Number(value);
+	if (bytes < 1024) {
+		return `${bytes} B`;
+	}
+
+	const units = ['KB', 'MB', 'GB', 'TB'];
+	let size = bytes / 1024;
+	let unitIndex = 0;
+
+	while (size >= 1024 && unitIndex < units.length - 1) {
+		size /= 1024;
+		unitIndex += 1;
+	}
+
+	return `${size.toFixed(1)} ${units[unitIndex]}`;
 }
 
 function formatOptionalNumber(value) {
@@ -100,6 +129,16 @@ function renderOverview(data) {
 	overviewNodes.latestDate.textContent = data.latestDate || 'No data yet';
 	overviewNodes.totalCategories.textContent = formatNumber(data.totalCategories);
 	overviewNodes.totalItems.textContent = formatNumber(data.totalItems);
+	overviewNodes.projectSize.textContent = formatBytes(data.projectSizeBytes);
+	overviewNodes.dbSize.textContent = formatBytes(data.dbSizeBytes);
+}
+
+function updateRefreshStatus(message) {
+	if (!refreshStatus) {
+		return;
+	}
+
+	refreshStatus.textContent = message;
 }
 
 function createCategoryButton(category) {
@@ -118,6 +157,10 @@ function createCategoryButton(category) {
 
 	button.addEventListener('click', () => {
 		selectedCategoryKey = key;
+		selectedCategory = {
+			mainCategory: category.mainCategory,
+			subCategory: category.subCategory
+		};
 		renderCategories(allCategories);
 		loadItems(category.mainCategory, category.subCategory);
 	});
@@ -269,6 +312,7 @@ function applyItemFilters() {
 }
 
 async function loadItems(mainCategory, subCategory) {
+	selectedCategory = { mainCategory, subCategory };
 	itemsTitle.textContent = `Items in ${categoryDisplayName({ mainCategory, subCategory })}`;
 	itemsBody.innerHTML = '<tr><td class="empty-state" colspan="6">Loading items...</td></tr>';
 
@@ -290,7 +334,11 @@ async function searchItemsGloballyByName() {
 	if (!query) {
 		itemsTitle.textContent = 'Select a category';
 		currentItems = [];
+		activeSearchToken += 1;
 		renderItems([]);
+		if (selectedCategory) {
+			await loadItems(selectedCategory.mainCategory, selectedCategory.subCategory);
+		}
 		return;
 	}
 
@@ -345,6 +393,35 @@ async function loadDashboard() {
 
 	renderCategories(allCategories);
 }
+
+async function refreshVisibleData() {
+	const query = globalItemSearch.value.trim();
+
+	await loadDashboard();
+
+	if (query) {
+		await searchItemsGloballyByName();
+	} else if (selectedCategory) {
+		await loadItems(selectedCategory.mainCategory, selectedCategory.subCategory);
+	}
+
+	updateRefreshStatus(`Last refresh: ${new Date().toLocaleTimeString()} | Auto-refresh every 60s`);
+}
+
+function startPolling() {
+	if (dashboardPollId) {
+		clearInterval(dashboardPollId);
+	}
+
+	dashboardPollId = setInterval(async () => {
+		try {
+			await refreshVisibleData();
+		} catch (error) {
+			console.error(error);
+			updateRefreshStatus('Auto-refresh failed. Check server logs and retry.');
+		}
+	}, POLL_INTERVAL_MS);
+}
 globalItemSearch.addEventListener('input', () => {
 	if (searchDebounceId) {
 		clearTimeout(searchDebounceId);
@@ -378,9 +455,12 @@ updateSortHeaderIndicators();
 
 try {
 	await loadDashboard();
+	updateRefreshStatus(`Last refresh: ${new Date().toLocaleTimeString()} | Auto-refresh every 60s`);
+	startPolling();
 } catch (error) {
 	console.error(error);
 	itemsTitle.textContent = 'Unable to load dashboard data';
 	categoriesList.innerHTML = '<p class="empty-state">Check server logs and verify that the database has data.</p>';
 	itemsBody.innerHTML = '<tr><td class="empty-state" colspan="6">Unable to load data.</td></tr>';
+	updateRefreshStatus('Auto-refresh unavailable until dashboard loads successfully.');
 }

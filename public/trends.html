@@ -34,6 +34,7 @@
                 </select>
                 <button id="refreshTrends" type="button">Refresh</button>
             </div>
+            <p id="trendsRefreshStatus" class="refresh-status">Auto-refresh every 60s. Waiting for first refresh.</p>
             <div id="trendsStatus" class="subtitle">Loading movers...</div>
             <div class="table-wrap" style="margin-top: 12px;">
                 <table>
@@ -44,8 +45,8 @@
                             <th>Main/Sub</th>
                             <th>Old Price</th>
                             <th>New Price</th>
-                            <th>Delta</th>
-                            <th>Delta %</th>
+                            <th data-sort="delta">Delta</th>
+                            <th data-sort="deltaPct">Delta %</th>
                             <th>Stock</th>
                             <th>Scanned At</th>
                         </tr>

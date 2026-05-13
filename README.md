@@ -62,6 +62,7 @@ npm.cmd run corridors:safe
 ```
 
 Cette commande recupere les min/max manquants et les enregistre dans le cache `item_corridors`.
+Le terminal affiche le mode (`normal` ou `safe`), la progression, un heartbeat periodique, et un resume final.
 
 ### 2) Interface web
 
@@ -70,6 +71,16 @@ Dans un autre terminal:
 ```bash
 npm.cmd run ui
 ```
+
+Afficher seulement les liens cliquables dans le terminal:
+
+```bash
+npm.cmd run ui:links
+```
+
+Ouvrir ensuite:
+- http://localhost:3000
+- http://localhost:3000/trends.html
 
 Acces:
 - Dashboard: http://localhost:3000
